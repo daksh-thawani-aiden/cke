@@ -34,9 +34,6 @@ const DEFAULT_USER = {
 	avatar: ''
 };
 
-// Set this to your actual Unqork domain for production!
-const ALLOWED_ORIGIN = 'https://aiden-ai-staging.unqork.io';
-
 export default function App() {
 	const editorPresenceRef = useRef(null);
 	const editorContainerRef = useRef(null);
@@ -49,24 +46,15 @@ export default function App() {
 	const [isLayoutReady, setIsLayoutReady] = useState(false);
 	const [user, setUser] = useState(DEFAULT_USER);
 
-	// Receive Unqork user info via postMessage, with security and confirmation
+	// Receive Unqork user info via postMessage
 	useEffect(() => {
 		function handleMessage(event) {
-			// Security: Only accept messages from allowed origin
-			if (process.env.NODE_ENV === 'production' && event.origin !== ALLOWED_ORIGIN) {
-				console.warn('Blocked postMessage from disallowed origin:', event.origin);
-				return;
-			}
+			// Optional: validate event.origin === 'your-unqork-domain'
 			if (event.data?.type === 'setUser') {
 				const { id, name, avatar } = event.data.user || {};
 				if (id && name) {
 					console.log('✅ Received user from Unqork:', { id, name, avatar });
 					setUser({ id, name, avatar });
-					// Optional: Confirm back to parent that user was set
-					window.parent.postMessage(
-						{ type: 'userSet', user: { id, name } },
-						event.origin
-					);
 				}
 			}
 		}
