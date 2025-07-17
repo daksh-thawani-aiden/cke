@@ -28,12 +28,6 @@ const CLOUD_SERVICES_TOKEN_URL =
 	'https://8iaaa_rjqdhw.cke-cs.com/token/dev/a216161b5440455a8394af71f071c57c9a4e138b4fc60ca61db95f0871f2?limit=10';
 const CLOUD_SERVICES_WEBSOCKET_URL = 'wss://8iaaa_rjqdhw.cke-cs.com/ws';
 
-const DEFAULT_USER = {
-	id: 'anonymous',
-	name: 'Anonymous',
-	avatar: ''
-};
-
 export default function App() {
 	const editorPresenceRef = useRef(null);
 	const editorContainerRef = useRef(null);
@@ -45,16 +39,14 @@ export default function App() {
 	const editorRevisionHistoryEditorRef = useRef(null);
 	const editorRevisionHistorySidebarRef = useRef(null);
 	const [isLayoutReady, setIsLayoutReady] = useState(false);
-	const [user, setUser] = useState(DEFAULT_USER);
+	const [user, setUser] = useState(null); // Start as null, not default
 
 	// Receive Unqork user info via postMessage
 	useEffect(() => {
 		function handleMessage(event) {
-			// Optional: validate event.origin === 'your-unqork-domain'
 			if (event.data?.type === 'setUser') {
 				const { id, name, avatar } = event.data.user || {};
 				if (id && name) {
-					console.log('✅ Received user from Unqork:', { id, name, avatar });
 					setUser({ id, name, avatar });
 				}
 			}
@@ -69,8 +61,7 @@ export default function App() {
 	}, []);
 
 	const { editorConfig } = useMemo(() => {
-		if (!isLayoutReady) return {};
-
+		if (!isLayoutReady || !user) return {};
 		return {
 			editorConfig: {
 				toolbar: {
@@ -200,7 +191,6 @@ export default function App() {
 	// Listen for setData messages from parent (Unqork) and set editor data
 	useEffect(() => {
 		function handleSetDataMessage(event) {
-			// Optionally check event.origin === 'https://your-unqork-domain'
 			if (event.data && event.data.type === 'setData') {
 				if (editorInstanceRef.current) {
 					editorInstanceRef.current.setData(event.data.data);
@@ -211,29 +201,6 @@ export default function App() {
 		return () => window.removeEventListener('message', handleSetDataMessage);
 	}, []);
 
-	// Update editor user info dynamically when user state changes
-	useEffect(() => {
-		if (editorInstanceRef.current && user && user.id && user.name) {
-			const editor = editorInstanceRef.current;
-			// Update the user config if possible
-			if (editor.config && editor.config.set) {
-				editor.config.set('user', {
-					id: user.id,
-					name: user.name,
-					avatar: user.avatar
-				});
-			}
-			// Update the Users plugin if available
-			if (editor.plugins && editor.plugins.get('Users')) {
-				editor.plugins.get('Users')._currentUser = {
-					id: user.id,
-					name: user.name,
-					avatar: user.avatar
-				};
-			}
-		}
-	}, [user]);
-
 	return (
 		<div className="main-container">
 			<div className="presence" ref={editorPresenceRef}></div>
@@ -242,7 +209,7 @@ export default function App() {
 				<div className="editor-container__editor-wrapper">
 					<div className="editor-container__editor">
 						<div ref={editorRef}>
-							{editorConfig && (
+							{editorConfig && Object.keys(editorConfig).length > 0 ? (
 								<CKEditor
 									onReady={editor => {
 										editorToolbarRef.current.appendChild(editor.ui.view.toolbar.element);
@@ -255,6 +222,8 @@ export default function App() {
 									editor={DecoupledEditor}
 									config={editorConfig}
 								/>
+							) : (
+								<div>Loading editor...</div>
 							)}
 						</div>
 					</div>
