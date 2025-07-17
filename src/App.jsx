@@ -38,28 +38,36 @@ export default function App() {
   const editorRevisionHistoryRef = useRef(null);
   const editorRevisionHistoryEditorRef = useRef(null);
   const editorRevisionHistorySidebarRef = useRef(null);
-  const [isLayoutReady, setIsLayoutReady] = useState(false);
   const [user, setUser] = useState(null); // Start as null, not default
+  const [ready, setReady] = useState(false);
 
-  // Receive Unqork user info via postMessage
+  // ---
+  // Handle incoming messages from Unqork
+  // ---
+
+  // User info from parent
   useEffect(() => {
+    console.log('[Iframe] Adding message listener for setUser');
     function handleMessage(event) {
+      console.log('[Iframe] Received message:', event.data);
       if (event.data?.type === 'setUser') {
         const { id, name, avatar } = event.data.user || {};
         if (id && name) {
+          console.log('[Iframe] Setting user:', { id, name, avatar });
           setUser({ id, name, avatar });
         }
       }
-      // Handle if Unqork ever needs to send other message types
     }
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  // Set editor content from Unqork
+  // Data from parent
   useEffect(() => {
+    console.log('[Iframe] Adding message listener for setData');
     function handleSetDataMessage(event) {
       if (event.data && event.data.type === 'setData') {
+        console.log('[Iframe] Received editor content:', event.data.data);
         if (editorInstanceRef.current) {
           editorInstanceRef.current.setData(event.data.data);
         }
@@ -69,17 +77,21 @@ export default function App() {
     return () => window.removeEventListener('message', handleSetDataMessage);
   }, []);
 
-  // Send Editor Changes Back to Unqork
+  // ---
+  // Send editor changes back to Unqork
+  // ---
+
   useEffect(() => {
+    if (!editorInstanceRef.current) return;
     const editor = editorInstanceRef.current;
-    if (!editor) return;
     const handleChange = () => {
-      if (!window.parent || !editor.isReadOnly) return; // Only if not read-only
+      if (!window.parent) return;
       const data = editor.getData();
+      console.log('[Iframe] Sending editor data back to parent:', data);
       try {
         window.parent.postMessage(
           { type: 'editorData', data },
-          '*' // Allows any parent; use your Unqork domain for tighter security if needed
+          '*' // Replace with your Unqork domain for tighter security
         );
       } catch (e) {
         console.warn('[Iframe] Failed to postMessage to parent:', e);
@@ -91,116 +103,121 @@ export default function App() {
     };
   }, [editorInstanceRef.current]);
 
-  useEffect(() => {
-    setIsLayoutReady(true);
-    return () => setIsLayoutReady(false);
-  }, []);
+  // ---
+  // Always mount the editor, even without user info
+  // ---
 
-  const { editorConfig } = useMemo(() => {
-    if (!isLayoutReady || !user) return {};
-    return {
-      editorConfig: {
-        toolbar: {
-          items: ['undo', 'redo', '|', 'revisionHistory', 'trackChanges', 'comment', 'commentsArchive', '|', 'bold', 'italic', '|', 'link'],
-          shouldNotGroupWhenFull: false
-        },
-        plugins: [
-          AutoLink,
-          Autosave,
-          Bold,
-          CloudServices,
-          Comments,
-          Essentials,
-          Italic,
-          Link,
-          Mention,
-          Paragraph,
-          PresenceList,
-          RealTimeCollaborativeComments,
-          RealTimeCollaborativeEditing,
-          RealTimeCollaborativeRevisionHistory,
-          RealTimeCollaborativeTrackChanges,
-          RevisionHistory,
-          TrackChanges,
-          TrackChangesData,
-          TrackChangesPreview
-        ],
-        cloudServices: {
-          tokenUrl: CLOUD_SERVICES_TOKEN_URL,
-          webSocketUrl: CLOUD_SERVICES_WEBSOCKET_URL
-        },
-        collaboration: {
-          channelId: DOCUMENT_ID
-        },
-        user: {
-          id: user.id,
-          name: user.name,
-          avatar: user.avatar
-        },
-        comments: {
-          editorConfig: {
-            extraPlugins: [Bold, Italic, Mention],
-            mention: {
-              feeds: [
-                {
-                  marker: '@',
-                  feed: []
-                }
-              ]
-            }
-          }
-        },
-        initialData: '<h2>Welcome to the collaborative CKEditor!</h2><p>Start editing...</p>',
-        licenseKey: LICENSE_KEY,
-        autosave: {
-          save() {
-            if (editorInstanceRef.current) {
-              const data = editorInstanceRef.current.getData();
-              console.log('Autosave:', data);
-              // TODO: send data to backend here
-            }
-          }
-        },
-        link: {
-          addTargetToExternalLinks: true,
-          defaultProtocol: 'https://',
-          decorators: {
-            toggleDownloadable: {
-              mode: 'manual',
-              label: 'Downloadable',
-              attributes: {
-                download: 'file'
-              }
-            }
-          }
-        },
-        mention: {
-          feeds: [
-            {
-              marker: '@',
-              feed: []
-            }
-          ]
-        },
-        placeholder: 'Type or paste your content here!',
-        presenceList: {
-          container: editorPresenceRef.current
-        },
-        revisionHistory: {
-          editorContainer: editorContainerRef.current,
-          viewerContainer: editorRevisionHistoryRef.current,
-          viewerEditorElement: editorRevisionHistoryEditorRef.current,
-          viewerSidebarContainer: editorRevisionHistorySidebarRef.current,
-          resumeUnsavedRevision: true
-        },
-        sidebar: {
-          container: editorAnnotationsRef.current
+  const editorConfig = {
+    initialData: '<p>Loading editor...</p>',
+    toolbar: { items: [], shouldNotGroupWhenFull: false },
+    plugins: [AutoLink, Essentials, Paragraph],
+    placeholder: 'Waiting for connection...',
+    cloudServices: {
+      tokenUrl: CLOUD_SERVICES_TOKEN_URL,
+      webSocketUrl: CLOUD_SERVICES_WEBSOCKET_URL
+    },
+    licenseKey: LICENSE_KEY,
+    autosave: {
+      save() {
+        if (editorInstanceRef.current) {
+          const data = editorInstanceRef.current.getData();
+          console.log('Autosave:', data);
         }
       }
-    };
-  }, [isLayoutReady, user]);
+    },
+    ...(user ? {
+      toolbar: {
+        items: ['undo', 'redo', '|', 'revisionHistory', 'trackChanges', 'comment', 'commentsArchive', '|', 'bold', 'italic', '|', 'link'],
+        shouldNotGroupWhenFull: false
+      },
+      plugins: [
+        AutoLink,
+        Autosave,
+        Bold,
+        CloudServices,
+        Comments,
+        Essentials,
+        Italic,
+        Link,
+        Mention,
+        Paragraph,
+        PresenceList,
+        RealTimeCollaborativeComments,
+        RealTimeCollaborativeEditing,
+        RealTimeCollaborativeRevisionHistory,
+        RealTimeCollaborativeTrackChanges,
+        RevisionHistory,
+        TrackChanges,
+        TrackChangesData,
+        TrackChangesPreview
+      ],
+      collaboration: {
+        channelId: DOCUMENT_ID
+      },
+      user: user,
+      comments: {
+        editorConfig: {
+          extraPlugins: [Bold, Italic, Mention],
+          mention: {
+            feeds: [
+              {
+                marker: '@',
+                feed: []
+              }
+            ]
+          }
+        }
+      },
+      link: {
+        addTargetToExternalLinks: true,
+        defaultProtocol: 'https://',
+        decorators: {
+          toggleDownloadable: {
+            mode: 'manual',
+            label: 'Downloadable',
+            attributes: {
+              download: 'file'
+            }
+          }
+        }
+      },
+      mention: {
+        feeds: [
+          {
+            marker: '@',
+            feed: []
+          }
+        ]
+      },
+      placeholder: 'Type or paste your content here!',
+      presenceList: {
+        container: editorPresenceRef.current
+      },
+      revisionHistory: {
+        editorContainer: editorContainerRef.current,
+        viewerContainer: editorRevisionHistoryRef.current,
+        viewerEditorElement: editorRevisionHistoryEditorRef.current,
+        viewerSidebarContainer: editorRevisionHistorySidebarRef.current,
+        resumeUnsavedRevision: true
+      },
+      sidebar: {
+        container: editorAnnotationsRef.current
+      }
+    } : {})
+  };
 
-  // Warn user if there are unsaved changes (PendingActions plugin)
+  // ---
+  // Mark as ready after first render
+  // ---
+
+  useEffect(() => {
+    setReady(true);
+  }, []);
+
+  // ---
+  // Warn on unsaved changes
+  // ---
+
   useEffect(() => {
     const handleBeforeUnload = (e) => {
       if (editorInstanceRef.current) {
@@ -220,9 +237,12 @@ export default function App() {
     if (editorInstanceRef.current) {
       const data = editorInstanceRef.current.getData();
       console.log('Manual save:', data);
-      // TODO: send data to backend here
     }
   };
+
+  // ---
+  // Render
+  // ---
 
   return (
     <div className="main-container">
@@ -232,25 +252,19 @@ export default function App() {
         <div className="editor-container__editor-wrapper">
           <div className="editor-container__editor">
             <div ref={editorRef}>
-              {editorConfig && Object.keys(editorConfig).length > 0 ? (
-                <CKEditor
-                  onReady={editor => {
+              <CKEditor
+                onReady={(editor) => {
+                  console.log('[Iframe] Editor ready');
+                  if (editorToolbarRef.current) {
                     editorToolbarRef.current.appendChild(editor.ui.view.toolbar.element);
-                    editorInstanceRef.current = editor;
-                  }}
-                  onAfterDestroy={() => {
-                    Array.from(editorToolbarRef.current.children).forEach(child => child.remove());
-                    editorInstanceRef.current = null;
-                  }}
-                  editor={DecoupledEditor}
-                  config={editorConfig}
-                />
-              ) : (
-                <div>Loading editor...</div>
-              )}
+                  }
+                  editorInstanceRef.current = editor;
+                }}
+                editor={DecoupledEditor}
+                config={editorConfig}
+              />
             </div>
           </div>
-          <div className="editor-container__sidebar" ref={editorAnnotationsRef}></div>
         </div>
       </div>
       <div className="revision-history" ref={editorRevisionHistoryRef}>
@@ -259,7 +273,11 @@ export default function App() {
           <div className="revision-history__sidebar" ref={editorRevisionHistorySidebarRef}></div>
         </div>
       </div>
-      <button onClick={handleManualSave} style={{marginTop: 16}}>Manual Save</button>
+      {user && (
+        <button onClick={handleManualSave} style={{ marginTop: 16 }}>
+          Manual Save
+        </button>
+      )}
     </div>
   );
 }
