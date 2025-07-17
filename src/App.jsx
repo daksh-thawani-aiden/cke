@@ -211,6 +211,29 @@ export default function App() {
 		return () => window.removeEventListener('message', handleSetDataMessage);
 	}, []);
 
+	// Update editor user info dynamically when user state changes
+	useEffect(() => {
+		if (editorInstanceRef.current && user && user.id && user.name) {
+			const editor = editorInstanceRef.current;
+			// Update the user config if possible
+			if (editor.config && editor.config.set) {
+				editor.config.set('user', {
+					id: user.id,
+					name: user.name,
+					avatar: user.avatar
+				});
+			}
+			// Update the Users plugin if available
+			if (editor.plugins && editor.plugins.get('Users')) {
+				editor.plugins.get('Users')._currentUser = {
+					id: user.id,
+					name: user.name,
+					avatar: user.avatar
+				};
+			}
+		}
+	}, [user]);
+
 	return (
 		<div className="main-container">
 			<div className="presence" ref={editorPresenceRef}></div>
