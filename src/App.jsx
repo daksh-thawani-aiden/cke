@@ -39,6 +39,7 @@ export default function App() {
 	const editorContainerRef = useRef(null);
 	const editorToolbarRef = useRef(null);
 	const editorRef = useRef(null);
+	const editorInstanceRef = useRef(null); // Store CKEditor instance
 	const editorAnnotationsRef = useRef(null);
 	const editorRevisionHistoryRef = useRef(null);
 	const editorRevisionHistoryEditorRef = useRef(null);
@@ -124,6 +125,15 @@ export default function App() {
 				},
 				initialData: '<h2>Welcome to the collaborative CKEditor!</h2><p>Start editing...</p>',
 				licenseKey: LICENSE_KEY,
+				autosave: {
+					save() {
+						if (editorInstanceRef.current) {
+							const data = editorInstanceRef.current.getData();
+							console.log('Autosave:', data);
+							// TODO: send data to backend here
+						}
+					}
+				},
 				link: {
 					addTargetToExternalLinks: true,
 					defaultProtocol: 'https://',
@@ -163,6 +173,44 @@ export default function App() {
 		};
 	}, [isLayoutReady, user]);
 
+	// Warn user if there are unsaved changes (PendingActions plugin)
+	useEffect(() => {
+		const handleBeforeUnload = (e) => {
+			if (editorInstanceRef.current) {
+				const pendingActions = editorInstanceRef.current.plugins?.get?.('PendingActions');
+				if (pendingActions && pendingActions.hasAny) {
+					e.preventDefault();
+					e.returnValue = '';
+					return '';
+				}
+			}
+		};
+		window.addEventListener('beforeunload', handleBeforeUnload);
+		return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+	}, []);
+
+	const handleManualSave = () => {
+		if (editorInstanceRef.current) {
+			const data = editorInstanceRef.current.getData();
+			console.log('Manual save:', data);
+			// TODO: send data to backend here
+		}
+	};
+
+	// Listen for setData messages from parent (Unqork) and set editor data
+	useEffect(() => {
+		function handleSetDataMessage(event) {
+			// Optionally check event.origin === 'https://your-unqork-domain'
+			if (event.data && event.data.type === 'setData') {
+				if (editorInstanceRef.current) {
+					editorInstanceRef.current.setData(event.data.data);
+				}
+			}
+		}
+		window.addEventListener('message', handleSetDataMessage);
+		return () => window.removeEventListener('message', handleSetDataMessage);
+	}, []);
+
 	return (
 		<div className="main-container">
 			<div className="presence" ref={editorPresenceRef}></div>
@@ -175,9 +223,11 @@ export default function App() {
 								<CKEditor
 									onReady={editor => {
 										editorToolbarRef.current.appendChild(editor.ui.view.toolbar.element);
+										editorInstanceRef.current = editor;
 									}}
 									onAfterDestroy={() => {
 										Array.from(editorToolbarRef.current.children).forEach(child => child.remove());
+										editorInstanceRef.current = null;
 									}}
 									editor={DecoupledEditor}
 									config={editorConfig}
@@ -194,6 +244,7 @@ export default function App() {
 					<div className="revision-history__sidebar" ref={editorRevisionHistorySidebarRef}></div>
 				</div>
 			</div>
+			<button onClick={handleManualSave} style={{marginTop: 16}}>Manual Save</button>
 		</div>
 	);
 }

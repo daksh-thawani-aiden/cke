@@ -13,5 +13,8 @@
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "vite": "^6.3.3"
+  },
+  "dependencies": {
+    "@ckeditor/ckeditor5-build-decoupled-document": "^41.4.2"
   }
 }
