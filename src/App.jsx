@@ -23,6 +23,9 @@ const DOCUMENT_ID = 'doc-1234';
 const CLOUD_SERVICES_TOKEN_URL =
   'https://8iaaa_rjqdhw.cke-cs.com/token/dev/a216161b5440455a8394af71f071c57c9a4e138b4fc60ca61db95f0871f2?limit=10';
 const CLOUD_SERVICES_WEBSOCKET_URL = 'wss://8iaaa_rjqdhw.cke-cs.com/ws';
+// CSP domains required for CKEditor cloud features:
+// https://8iaaa_rjqdhw.cke-cs.com https://proxy-event.ckeditor.com
+// Make sure these are present in your Content-Security-Policy connect-src directive.
 
 const DEFAULT_USER = { id: 'anonymous', name: 'Anonymous', avatar: '' };
 
