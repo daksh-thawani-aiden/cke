@@ -13,7 +13,7 @@ import {
   TrackChangesData,
   TrackChangesPreview
 } from 'ckeditor5-premium-features';
-import DecoupledEditor from "@ckeditor/ckeditor5-build-decoupled-document";
+// import DecoupledEditor from "@ckeditor/ckeditor5-build-decoupled-document";
 import 'ckeditor5/ckeditor5.css';
 import 'ckeditor5-premium-features/ckeditor5-premium-features.css';
 import './App.css';
