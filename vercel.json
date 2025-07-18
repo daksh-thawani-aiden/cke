@@ -1,13 +1,2 @@
 {
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "Content-Security-Policy",
-          "value": "frame-ancestors https://aiden-ai-stagingx.unqork.io https://aiden-ai-staging.unqork.io; connect-src https://aiden-ai-stagingx.unqork.io https://aiden-ai-staging.unqork.io https://proxy-event.ckeditor.com https://8iaaa_rjqdhw.cke-cs.com;"
-        }
-      ]
-    }
-  ]
 }
