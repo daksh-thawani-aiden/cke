@@ -5,7 +5,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'none'; script-src 'self' https://cdn.ckeditor.com https://proxy-event.ckeditor.com; connect-src 'self' https://*.cke-cs.com https://*.ckeditor.com https://proxy-event.ckeditor.com wss://*.cke-cs.com; img-src * data:; style-src 'self' 'unsafe-inline'; frame-src *; frame-ancestors https://aiden-ai-staging.unqork.io https://aiden-ai-stagingx.unqork.io;"
+          "value": "default-src * data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src * data: blob:; img-src * data: blob:; style-src * 'unsafe-inline' data: blob:; frame-src *; frame-ancestors *;"
         }
       ]
     }
